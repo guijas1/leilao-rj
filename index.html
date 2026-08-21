@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verificação de Bens — Leilão RJ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #1c1b19;
+    --surface: #242320;
+    --surface-2: #2b2a25;
+    --border: #3c392f;
+    --text: #ede8de;
+    --muted: #a39c8c;
+    --amber: #e8a33d;
+    --amber-dim: #7a5a26;
+    --green: #7fae6f;
+    --green-dim: #33402e;
+    --red: #c96f56;
+    --shadow: rgba(0,0,0,0.4);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px),
+      var(--bg);
+    color:var(--text);
+    font-family:'Archivo', sans-serif;
+    min-height:100vh;
+    padding-bottom:60px;
+  }
+  ::selection{ background:var(--amber); color:#1c1b19; }
+
+  header{
+    position:sticky; top:0; z-index:20;
+    background:var(--bg);
+    border-bottom:2px solid var(--border);
+    padding:22px 28px 18px;
+  }
+  .top-row{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    flex-wrap:wrap; gap:16px;
+    max-width:1400px; margin:0 auto;
+  }
+  .title-block .eyebrow{
+    font-family:'Space Mono', monospace;
+    font-size:11px; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--amber); margin-bottom:6px;
+  }
+  h1{
+    font-family:'Archivo Black', sans-serif;
+    font-size:clamp(22px, 3vw, 34px);
+    letter-spacing:-0.01em;
+    line-height:1;
+    text-transform:uppercase;
+  }
+  .subtitle{ color:var(--muted); font-size:13px; margin-top:6px; }
+
+  .progress-tag{
+    font-family:'Space Mono', monospace;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:3px;
+    padding:10px 16px;
+    min-width:220px;
+    position:relative;
+  }
+  .progress-tag::before{
+    content:"";
+    position:absolute; left:-1px; top:50%; transform:translateY(-50%);
+    width:10px; height:10px; border-radius:50%;
+    background:var(--bg); border:1px solid var(--border);
+  }
+  .progress-tag .ptop{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted);
+    margin-bottom:6px;
+  }
+  .progress-tag .pnum{ color:var(--amber); font-weight:700; font-size:14px; }
+  .bar{
+    height:6px; background:var(--surface-2); border-radius:3px; overflow:hidden;
+    border:1px solid var(--border);
+  }
+  .bar-fill{
+    height:100%; background:linear-gradient(90deg, var(--amber-dim), var(--amber));
+    width:0%; transition:width .25s ease;
+  }
+
+  .controls{
+    max-width:1400px; margin:16px auto 0;
+    display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+  }
+  input[type="search"]{
+    flex:1; min-width:220px;
+    background:var(--surface); border:1px solid var(--border); color:var(--text);
+    padding:10px 14px; border-radius:3px; font-size:14px; font-family:'Archivo',sans-serif;
+  }
+  input[type="search"]::placeholder{ color:var(--muted); }
+  select{
+    background:var(--surface); border:1px solid var(--border); color:var(--text);
+    padding:10px 12px; border-radius:3px; font-size:13px; font-family:'Archivo',sans-serif;
+  }
+  .btn{
+    background:var(--surface); border:1px solid var(--border); color:var(--text);
+    padding:10px 14px; border-radius:3px; font-size:13px; cursor:pointer;
+    font-family:'Archivo',sans-serif; font-weight:600;
+    transition:border-color .15s ease, color .15s ease;
+  }
+  .btn:hover{ border-color:var(--amber); color:var(--amber); }
+  .btn.primary{ background:var(--amber); border-color:var(--amber); color:#1c1b19; }
+  .btn.primary:hover{ opacity:.9; color:#1c1b19; }
+
+  main{ max-width:1400px; margin:20px auto 0; padding:0 28px; }
+
+  .table-wrap{
+    border:1px solid var(--border); border-radius:4px; overflow:auto;
+    max-height:70vh;
+    background:var(--surface);
+  }
+  table{ border-collapse:collapse; width:100%; font-size:13px; }
+  thead th{
+    position:sticky; top:0; z-index:5;
+    background:var(--surface-2);
+    text-align:left; padding:10px 12px;
+    font-family:'Space Mono', monospace;
+    font-size:10.5px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--muted);
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
+  }
+  thead th.check-col{ text-align:center; width:54px; }
+  tbody td{
+    padding:9px 12px;
+    border-bottom:1px solid rgba(255,255,255,0.04);
+    vertical-align:middle;
+    white-space:nowrap;
+  }
+  tbody td.desc-col{ white-space:normal; min-width:160px; }
+  tbody tr:hover{ background:rgba(232,163,61,0.05); }
+  tbody tr.is-checked{ background:rgba(127,174,111,0.06); }
+  tbody tr.is-checked:hover{ background:rgba(127,174,111,0.1); }
+  .pat{ font-family:'Space Mono', monospace; color:var(--amber); }
+  .serie{ font-family:'Space Mono', monospace; color:var(--muted); font-size:12px; }
+
+  .check-col{ text-align:center; }
+  .checkbox{
+    appearance:none; -webkit-appearance:none;
+    width:20px; height:20px;
+    border:2px solid var(--muted);
+    border-radius:3px;
+    cursor:pointer;
+    position:relative;
+    background:transparent;
+    vertical-align:middle;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .checkbox:hover{ border-color:var(--amber); }
+  .checkbox:checked{
+    background:var(--green); border-color:var(--green);
+  }
+  .checkbox:checked::after{
+    content:"";
+    position:absolute; left:5px; top:1px;
+    width:6px; height:11px;
+    border:solid #14210f;
+    border-width:0 2px 2px 0;
+    transform:rotate(45deg);
+  }
+
+  .empty-state{
+    text-align:center; padding:60px 20px; color:var(--muted);
+    font-family:'Space Mono', monospace; font-size:13px;
+  }
+
+  footer{
+    max-width:1400px; margin:14px auto 0; padding:0 28px;
+    color:var(--muted); font-size:12px;
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;
+  }
+  footer .stamp{ font-family:'Space Mono', monospace; }
+
+  @media (max-width: 720px){
+    header{ padding:16px; }
+    main{ padding:0 16px; }
+    footer{ padding:0 16px; }
+    .table-wrap{ max-height:65vh; }
+    thead th, tbody td{ padding:8px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="top-row">
+    <div class="title-block">
+      <div class="eyebrow">Descarte de Ativos · Sala de Descarte, 1º Subsolo</div>
+      <h1>Verificação de Bens — Leilão RJ</h1>
+      <div class="subtitle">Marque cada item conforme a etiqueta patrimonial for conferida fisicamente.</div>
+    </div>
+    <div class="progress-tag">
+      <div class="ptop"><span>Progresso</span><span class="pnum" id="progressLabel">0 / 0</span></div>
+      <div class="bar"><div class="bar-fill" id="progressBar"></div></div>
+    </div>
+  </div>
+  <div class="controls">
+    <input type="search" id="searchInput" placeholder="Buscar por patrimônio, descrição, série…">
+    <select id="areaFilter"><option value="">Todas as áreas</option></select>
+    <select id="catFilter"><option value="">Todas as categorias</option></select>
+    <select id="statusFilter">
+      <option value="">Todos os status</option>
+      <option value="checked">Verificados</option>
+      <option value="unchecked">Pendentes</option>
+    </select>
+    <button class="btn" id="exportBtn">Exportar CSV</button>
+    <button class="btn" id="resetBtn">Limpar marcações</button>
+  </div>
+</header>
+
+<main>
+  <div class="table-wrap">
+    <table id="dataTable">
+      <thead>
+        <tr>
+          <th class="check-col">✓</th>
+          <th>Patrimônio</th>
+          <th class="desc-col">Descrição</th>
+          <th>Categoria</th>
+          <th>Modelo</th>
+          <th>Nº de Série</th>
+          <th>Área</th>
+          <th>Andar</th>
+          <th>Sala</th>
+          <th>Uso 3ºs</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+  <div class="empty-state" id="emptyState" style="display:none;">Nenhum item encontrado com esse filtro.</div>
+</main>
+
+<footer>
+  <span>Rio de Janeiro · Lista de Leilão</span>
+  <span class="stamp" id="savedNote">Marcações salvas automaticamente neste navegador</span>
+</footer>
+
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>
+const EXCEL_FILE = './Lista%20Leil%C3%A3o%20RJ.xlsx';
+let DATA = [];
+
+const STORAGE_KEY = 'leilao_rj_verificacao_v1';
+let checkedState = {};
+try { checkedState = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) { checkedState = {}; }
+
+function saveState(){
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(checkedState)); } catch(e){}
+}
+
+const tableBody = document.getElementById('tableBody');
+const emptyState = document.getElementById('emptyState');
+const searchInput = document.getElementById('searchInput');
+const areaFilter = document.getElementById('areaFilter');
+const catFilter = document.getElementById('catFilter');
+const statusFilter = document.getElementById('statusFilter');
+const progressLabel = document.getElementById('progressLabel');
+const progressBar = document.getElementById('progressBar');
+const savedNote = document.getElementById('savedNote');
+
+function populateFilters(){
+  areaFilter.innerHTML = '<option value="">Todas as áreas</option>';
+  catFilter.innerHTML = '<option value="">Todas as categorias</option>';
+
+  const areas = [...new Set(DATA.map(d => d.area).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
+  const cats = [...new Set(DATA.map(d => d.cat).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
+
+  areas.forEach(a => { const o = document.createElement('option'); o.value = a; o.textContent = a; areaFilter.appendChild(o); });
+  cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catFilter.appendChild(o); });
+}
+
+function cellText(row, header){
+  const value = row[header];
+  return value == null ? '' : String(value).trim();
+}
+
+async function loadData(){
+  emptyState.textContent = 'Carregando dados da planilha…';
+  emptyState.style.display = 'block';
+  tableBody.innerHTML = '';
+
+  try {
+    if (typeof XLSX === 'undefined') {
+      throw new Error('A biblioteca de leitura do Excel não foi carregada.');
+    }
+
+    // O parâmetro evita que o navegador reutilize uma cópia antiga da planilha.
+    const separator = EXCEL_FILE.includes('?') ? '&' : '?';
+    const response = await fetch(EXCEL_FILE + separator + 'v=' + Date.now(), { cache: 'no-store' });
+    if (!response.ok) throw new Error('HTTP ' + response.status + ' ao acessar a planilha.');
+
+    const buffer = await response.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: 'array' });
+    const firstSheetName = workbook.SheetNames[0];
+    if (!firstSheetName) throw new Error('A planilha não contém nenhuma aba.');
+
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
+      defval: '',
+      raw: false
+    });
+
+    DATA = rows
+      .map(row => ({
+        loc: cellText(row, 'Localidade'),
+        area: cellText(row, 'Área'),
+        pat: cellText(row, 'Nº Patrimonial (Etiqueta)'),
+        desc: cellText(row, 'Descrição do Bem'),
+        cat: cellText(row, 'Categorização'),
+        modelo: cellText(row, 'Modelo'),
+        serie: cellText(row, 'Número de Série'),
+        andar: cellText(row, 'Andar'),
+        sala: cellText(row, 'Sala'),
+        terceiros: cellText(row, 'Uso por terceiros')
+      }))
+      .filter(d => d.pat || d.desc || d.serie);
+
+    populateFilters();
+    render();
+    savedNote.textContent = 'Dados carregados do Excel · marcações salvas neste navegador';
+  } catch (error) {
+    console.error(error);
+    DATA = [];
+    progressLabel.textContent = '0 / 0';
+    progressBar.style.width = '0%';
+    emptyState.textContent = 'Não foi possível carregar “Lista Leilão RJ.xlsx”. Mantenha o Excel na mesma pasta do HTML e abra a página por uma hospedagem/servidor web (não diretamente por file://).';
+    emptyState.style.display = 'block';
+    savedNote.textContent = 'Erro ao carregar a planilha';
+  }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function updateProgress(){
+  const total = DATA.length;
+  const done = DATA.filter(d => checkedState[d.pat]).length;
+  progressLabel.textContent = done + ' / ' + total;
+  progressBar.style.width = (total ? (done/total*100) : 0) + '%';
+}
+
+function render(){
+  const q = searchInput.value.trim().toLowerCase();
+  const areaVal = areaFilter.value;
+  const catVal = catFilter.value;
+  const statusVal = statusFilter.value;
+
+  const filtered = DATA.filter(d => {
+    if (areaVal && d.area !== areaVal) return false;
+    if (catVal && d.cat !== catVal) return false;
+    const isChecked = !!checkedState[d.pat];
+    if (statusVal === 'checked' && !isChecked) return false;
+    if (statusVal === 'unchecked' && isChecked) return false;
+    if (q){
+      const hay = (d.pat + ' ' + d.desc + ' ' + d.modelo + ' ' + d.serie + ' ' + d.sala).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  if (filtered.length === 0){
+    tableBody.innerHTML = '';
+    emptyState.style.display = 'block';
+  } else {
+    emptyState.style.display = 'none';
+    const rows = filtered.map(d => {
+      const isChecked = !!checkedState[d.pat];
+      return '<tr class="' + (isChecked ? 'is-checked' : '') + '" data-pat="' + escapeHtml(d.pat) + '">' +
+        '<td class="check-col"><input type="checkbox" class="checkbox" ' + (isChecked ? 'checked' : '') + '></td>' +
+        '<td class="pat">' + escapeHtml(d.pat) + '</td>' +
+        '<td class="desc-col">' + escapeHtml(d.desc) + '</td>' +
+        '<td>' + escapeHtml(d.cat) + '</td>' +
+        '<td>' + escapeHtml(d.modelo) + '</td>' +
+        '<td class="serie">' + escapeHtml(d.serie) + '</td>' +
+        '<td>' + escapeHtml(d.area) + '</td>' +
+        '<td>' + escapeHtml(d.andar) + '</td>' +
+        '<td>' + escapeHtml(d.sala) + '</td>' +
+        '<td>' + escapeHtml(d.terceiros) + '</td>' +
+      '</tr>';
+    });
+    tableBody.innerHTML = rows.join('');
+  }
+  updateProgress();
+}
+
+tableBody.addEventListener('change', e => {
+  if (e.target.classList.contains('checkbox')){
+    const tr = e.target.closest('tr');
+    const pat = tr.getAttribute('data-pat');
+    if (e.target.checked){ checkedState[pat] = true; tr.classList.add('is-checked'); }
+    else { delete checkedState[pat]; tr.classList.remove('is-checked'); }
+    saveState();
+    updateProgress();
+  }
+});
+
+searchInput.addEventListener('input', render);
+areaFilter.addEventListener('change', render);
+catFilter.addEventListener('change', render);
+statusFilter.addEventListener('change', render);
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm('Limpar todas as marcações de verificação?')){
+    checkedState = {};
+    saveState();
+    render();
+  }
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const headers = ['Localidade','Área','Nº Patrimonial (Etiqueta)','Descrição do Bem','Categorização','Modelo','Número de Série','Andar','Sala','Uso por terceiros','Status de verificação'];
+  const lines = [headers.join(';')];
+  DATA.forEach(d => {
+    const isChecked = !!checkedState[d.pat];
+    const row = [d.loc, d.area, d.pat, d.desc, d.cat, d.modelo, d.serie, d.andar, d.sala, d.terceiros, isChecked ? 'Verificado' : 'Pendente'];
+    lines.push(row.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(';'));
+  });
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Lista_Leilao_RJ_verificacao.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+loadData();
+</script>
+</body>
+</html>
