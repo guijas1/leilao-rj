@@ -241,14 +241,14 @@
         <tr class="filter-row">
           <th></th>
           <th></th>
-          <th><input class="col-filter" id="descFilter" placeholder="Filtrar descrição"></th>
-          <th><input class="col-filter" id="catFilterCol" placeholder="Filtrar categoria"></th>
-          <th><input class="col-filter" id="modeloFilter" placeholder="Filtrar modelo"></th>
+          <th><select class="col-filter" id="descFilter"><option value="">Todas as descrições</option></select></th>
+          <th><select class="col-filter" id="catFilterCol"><option value="">Todas as categorias</option></select></th>
+          <th><select class="col-filter" id="modeloFilter"><option value="">Todos os modelos</option></select></th>
           <th></th>
-          <th><input class="col-filter" id="areaFilterCol" placeholder="Filtrar área"></th>
-          <th><input class="col-filter" id="andarFilter" placeholder="Filtrar andar"></th>
-          <th><input class="col-filter" id="salaFilter" placeholder="Filtrar sala"></th>
-          <th><input class="col-filter" id="terceirosFilter" placeholder="Filtrar uso"></th>
+          <th><select class="col-filter" id="areaFilterCol"><option value="">Todas as áreas</option></select></th>
+          <th><select class="col-filter" id="andarFilter"><option value="">Todos os andares</option></select></th>
+          <th><select class="col-filter" id="salaFilter"><option value="">Todas as salas</option></select></th>
+          <th><select class="col-filter" id="terceirosFilter"><option value="">Todos</option></select></th>
         </tr>
       </thead>
       <tbody id="tableBody"></tbody>
@@ -295,13 +295,34 @@ const columnFilters = {
   terceiros: document.getElementById('terceirosFilter')
 };
 
+function fillSelect(id, values, first){
+  const el = document.getElementById(id);
+  el.innerHTML = '<option value="">' + first + '</option>';
+  values.forEach(v => {
+    const o = document.createElement('option');
+    o.value = v;
+    o.textContent = v;
+    el.appendChild(o);
+  });
+}
+
+function unique(field){
+  return [...new Set(DATA.map(d => d[field]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+}
+
 function populateFilters(){
   areaFilter.innerHTML = '<option value="">Todas as áreas</option>';
   catFilter.innerHTML = '<option value="">Todas as categorias</option>';
-  const areas = [...new Set(DATA.map(d => d.area).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
-  const cats = [...new Set(DATA.map(d => d.cat).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
-  areas.forEach(a => { const o = document.createElement('option'); o.value = a; o.textContent = a; areaFilter.appendChild(o); });
-  cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catFilter.appendChild(o); });
+  unique('area').forEach(a => { const o = document.createElement('option'); o.value=a; o.textContent=a; areaFilter.appendChild(o); });
+  unique('cat').forEach(c => { const o = document.createElement('option'); o.value=c; o.textContent=c; catFilter.appendChild(o); });
+
+  fillSelect('descFilter', unique('desc'), 'Todas as descrições');
+  fillSelect('catFilterCol', unique('cat'), 'Todas as categorias');
+  fillSelect('modeloFilter', unique('modelo'), 'Todos os modelos');
+  fillSelect('areaFilterCol', unique('area'), 'Todas as áreas');
+  fillSelect('andarFilter', unique('andar'), 'Todos os andares');
+  fillSelect('salaFilter', unique('sala'), 'Todas as salas');
+  fillSelect('terceirosFilter', unique('terceiros'), 'Todos');
 }
 
 function cellText(row, header){
@@ -480,7 +501,7 @@ searchInput.addEventListener('input', render);
 areaFilter.addEventListener('change', render);
 catFilter.addEventListener('change', render);
 statusFilter.addEventListener('change', render);
-Object.values(columnFilters).forEach(input => input.addEventListener('input', render));
+Object.values(columnFilters).forEach(input => input.addEventListener('change', render));
 
 document.getElementById('resetBtn').addEventListener('click', async () => {
   if (!syncReady) return;
