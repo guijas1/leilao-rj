@@ -190,6 +190,8 @@
     .table-wrap{ max-height:65vh; }
     thead th, tbody td{ padding:8px; }
   }
+.filter-row th{padding:6px;background:var(--surface);position:sticky;top:44px;z-index:4;}
+.col-filter{width:100%;min-width:90px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 8px;font-size:11px;font-family:'Archivo',sans-serif;}
 </style>
 </head>
 <body>
@@ -236,6 +238,18 @@
           <th>Sala</th>
           <th>Uso 3ºs</th>
         </tr>
+        <tr class="filter-row">
+          <th></th>
+          <th></th>
+          <th><input class="col-filter" id="descFilter" placeholder="Filtrar descrição"></th>
+          <th><input class="col-filter" id="catFilterCol" placeholder="Filtrar categoria"></th>
+          <th><input class="col-filter" id="modeloFilter" placeholder="Filtrar modelo"></th>
+          <th></th>
+          <th><input class="col-filter" id="areaFilterCol" placeholder="Filtrar área"></th>
+          <th><input class="col-filter" id="andarFilter" placeholder="Filtrar andar"></th>
+          <th><input class="col-filter" id="salaFilter" placeholder="Filtrar sala"></th>
+          <th><input class="col-filter" id="terceirosFilter" placeholder="Filtrar uso"></th>
+        </tr>
       </thead>
       <tbody id="tableBody"></tbody>
     </table>
@@ -271,6 +285,15 @@ const statusFilter = document.getElementById('statusFilter');
 const progressLabel = document.getElementById('progressLabel');
 const progressBar = document.getElementById('progressBar');
 const savedNote = document.getElementById('savedNote');
+const columnFilters = {
+  desc: document.getElementById('descFilter'),
+  cat: document.getElementById('catFilterCol'),
+  modelo: document.getElementById('modeloFilter'),
+  area: document.getElementById('areaFilterCol'),
+  andar: document.getElementById('andarFilter'),
+  sala: document.getElementById('salaFilter'),
+  terceiros: document.getElementById('terceirosFilter')
+};
 
 function populateFilters(){
   areaFilter.innerHTML = '<option value="">Todas as áreas</option>';
@@ -397,10 +420,18 @@ function render(){
   const areaVal = areaFilter.value;
   const catVal = catFilter.value;
   const statusVal = statusFilter.value;
+  const cf = Object.fromEntries(Object.entries(columnFilters).map(([k,v]) => [k, v.value.trim().toLowerCase()]));
 
   const filtered = DATA.filter(d => {
     if (areaVal && d.area !== areaVal) return false;
     if (catVal && d.cat !== catVal) return false;
+    if (cf.desc && !d.desc.toLowerCase().includes(cf.desc)) return false;
+    if (cf.cat && !d.cat.toLowerCase().includes(cf.cat)) return false;
+    if (cf.modelo && !d.modelo.toLowerCase().includes(cf.modelo)) return false;
+    if (cf.area && !d.area.toLowerCase().includes(cf.area)) return false;
+    if (cf.andar && !d.andar.toLowerCase().includes(cf.andar)) return false;
+    if (cf.sala && !d.sala.toLowerCase().includes(cf.sala)) return false;
+    if (cf.terceiros && !d.terceiros.toLowerCase().includes(cf.terceiros)) return false;
     const isChecked = !!checkedState[d.pat];
     if (statusVal === 'checked' && !isChecked) return false;
     if (statusVal === 'unchecked' && isChecked) return false;
@@ -449,6 +480,7 @@ searchInput.addEventListener('input', render);
 areaFilter.addEventListener('change', render);
 catFilter.addEventListener('change', render);
 statusFilter.addEventListener('change', render);
+Object.values(columnFilters).forEach(input => input.addEventListener('input', render));
 
 document.getElementById('resetBtn').addEventListener('click', async () => {
   if (!syncReady) return;
