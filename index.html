@@ -245,21 +245,22 @@
 
 <footer>
   <span>Rio de Janeiro · Lista de Leilão</span>
-  <span class="stamp" id="savedNote">Marcações salvas automaticamente neste navegador</span>
+  <span class="stamp" id="savedNote">Conectando ao Supabase…</span>
 </footer>
 
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const EXCEL_FILE = './Lista%20Leil%C3%A3o%20RJ.xlsx';
+
+// Estes dois valores serão preenchidos com o projeto Supabase.
+const SUPABASE_URL = 'https://uhngyqdfcqhchjqhnrxt.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_N_1PgI8hAOc4AGwRNGRalw_6iL_iHof';
+
 let DATA = [];
-
-const STORAGE_KEY = 'leilao_rj_verificacao_v1';
 let checkedState = {};
-try { checkedState = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) { checkedState = {}; }
-
-function saveState(){
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(checkedState)); } catch(e){}
-}
+let db = null;
+let syncReady = false;
 
 const tableBody = document.getElementById('tableBody');
 const emptyState = document.getElementById('emptyState');
@@ -274,10 +275,8 @@ const savedNote = document.getElementById('savedNote');
 function populateFilters(){
   areaFilter.innerHTML = '<option value="">Todas as áreas</option>';
   catFilter.innerHTML = '<option value="">Todas as categorias</option>';
-
   const areas = [...new Set(DATA.map(d => d.area).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
   const cats = [...new Set(DATA.map(d => d.cat).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
-
   areas.forEach(a => { const o = document.createElement('option'); o.value = a; o.textContent = a; areaFilter.appendChild(o); });
   cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catFilter.appendChild(o); });
 }
@@ -287,17 +286,62 @@ function cellText(row, header){
   return value == null ? '' : String(value).trim();
 }
 
+function initSupabase(){
+  if (!window.supabase || SUPABASE_URL.startsWith('COLE_') || SUPABASE_PUBLISHABLE_KEY.startsWith('COLE_')) {
+    throw new Error('Credenciais do Supabase ainda não configuradas.');
+  }
+  db = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+}
+
+async function loadSharedState(){
+  const { data, error } = await db
+    .from('verificacoes_leilao')
+    .select('patrimonio, verificado');
+  if (error) throw error;
+  checkedState = {};
+  for (const row of data || []) {
+    if (row.verificado) checkedState[String(row.patrimonio)] = true;
+  }
+}
+
+async function setSharedState(pat, isChecked){
+  const patrimonio = String(pat);
+  const previous = !!checkedState[patrimonio];
+
+  // Atualização otimista para resposta imediata da interface.
+  if (isChecked) checkedState[patrimonio] = true;
+  else delete checkedState[patrimonio];
+  render();
+
+  try {
+    const { error } = await db
+      .from('verificacoes_leilao')
+      .upsert({
+        patrimonio,
+        verificado: isChecked,
+        atualizado_em: new Date().toISOString()
+      }, { onConflict: 'patrimonio' });
+    if (error) throw error;
+    savedNote.textContent = 'Sincronizado com Supabase · marcações compartilhadas';
+  } catch (error) {
+    console.error(error);
+    if (previous) checkedState[patrimonio] = true;
+    else delete checkedState[patrimonio];
+    render();
+    savedNote.textContent = 'Falha ao salvar no Supabase';
+    alert('Não foi possível salvar esta marcação. Verifique a conexão e tente novamente.');
+  }
+}
+
 async function loadData(){
   emptyState.textContent = 'Carregando dados da planilha…';
   emptyState.style.display = 'block';
   tableBody.innerHTML = '';
 
   try {
-    if (typeof XLSX === 'undefined') {
-      throw new Error('A biblioteca de leitura do Excel não foi carregada.');
-    }
+    if (typeof XLSX === 'undefined') throw new Error('A biblioteca de leitura do Excel não foi carregada.');
+    initSupabase();
 
-    // O parâmetro evita que o navegador reutilize uma cópia antiga da planilha.
     const separator = EXCEL_FILE.includes('?') ? '&' : '?';
     const response = await fetch(EXCEL_FILE + separator + 'v=' + Date.now(), { cache: 'no-store' });
     if (!response.ok) throw new Error('HTTP ' + response.status + ' ao acessar a planilha.');
@@ -307,37 +351,33 @@ async function loadData(){
     const firstSheetName = workbook.SheetNames[0];
     if (!firstSheetName) throw new Error('A planilha não contém nenhuma aba.');
 
-    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
-      defval: '',
-      raw: false
-    });
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { defval: '', raw: false });
+    DATA = rows.map(row => ({
+      loc: cellText(row, 'Localidade'),
+      area: cellText(row, 'Área'),
+      pat: cellText(row, 'Nº Patrimonial (Etiqueta)'),
+      desc: cellText(row, 'Descrição do Bem'),
+      cat: cellText(row, 'Categorização'),
+      modelo: cellText(row, 'Modelo'),
+      serie: cellText(row, 'Número de Série'),
+      andar: cellText(row, 'Andar'),
+      sala: cellText(row, 'Sala'),
+      terceiros: cellText(row, 'Uso por terceiros')
+    })).filter(d => d.pat || d.desc || d.serie);
 
-    DATA = rows
-      .map(row => ({
-        loc: cellText(row, 'Localidade'),
-        area: cellText(row, 'Área'),
-        pat: cellText(row, 'Nº Patrimonial (Etiqueta)'),
-        desc: cellText(row, 'Descrição do Bem'),
-        cat: cellText(row, 'Categorização'),
-        modelo: cellText(row, 'Modelo'),
-        serie: cellText(row, 'Número de Série'),
-        andar: cellText(row, 'Andar'),
-        sala: cellText(row, 'Sala'),
-        terceiros: cellText(row, 'Uso por terceiros')
-      }))
-      .filter(d => d.pat || d.desc || d.serie);
-
+    await loadSharedState();
+    syncReady = true;
     populateFilters();
     render();
-    savedNote.textContent = 'Dados carregados do Excel · marcações salvas neste navegador';
+    savedNote.textContent = 'Sincronizado com Supabase · marcações compartilhadas';
   } catch (error) {
     console.error(error);
     DATA = [];
     progressLabel.textContent = '0 / 0';
     progressBar.style.width = '0%';
-    emptyState.textContent = 'Não foi possível carregar “Lista Leilão RJ.xlsx”. Mantenha o Excel na mesma pasta do HTML e abra a página por uma hospedagem/servidor web (não diretamente por file://).';
+    emptyState.textContent = 'Não foi possível iniciar a página: ' + error.message;
     emptyState.style.display = 'block';
-    savedNote.textContent = 'Erro ao carregar a planilha';
+    savedNote.textContent = 'Erro de configuração/conexão';
   }
 }
 
@@ -376,7 +416,7 @@ function render(){
     emptyState.style.display = 'block';
   } else {
     emptyState.style.display = 'none';
-    const rows = filtered.map(d => {
+    tableBody.innerHTML = filtered.map(d => {
       const isChecked = !!checkedState[d.pat];
       return '<tr class="' + (isChecked ? 'is-checked' : '') + '" data-pat="' + escapeHtml(d.pat) + '">' +
         '<td class="check-col"><input type="checkbox" class="checkbox" ' + (isChecked ? 'checked' : '') + '></td>' +
@@ -390,20 +430,18 @@ function render(){
         '<td>' + escapeHtml(d.sala) + '</td>' +
         '<td>' + escapeHtml(d.terceiros) + '</td>' +
       '</tr>';
-    });
-    tableBody.innerHTML = rows.join('');
+    }).join('');
   }
   updateProgress();
 }
 
-tableBody.addEventListener('change', e => {
+tableBody.addEventListener('change', async e => {
   if (e.target.classList.contains('checkbox')){
+    if (!syncReady) return;
     const tr = e.target.closest('tr');
     const pat = tr.getAttribute('data-pat');
-    if (e.target.checked){ checkedState[pat] = true; tr.classList.add('is-checked'); }
-    else { delete checkedState[pat]; tr.classList.remove('is-checked'); }
-    saveState();
-    updateProgress();
+    e.target.disabled = true;
+    await setSharedState(pat, e.target.checked);
   }
 });
 
@@ -412,11 +450,21 @@ areaFilter.addEventListener('change', render);
 catFilter.addEventListener('change', render);
 statusFilter.addEventListener('change', render);
 
-document.getElementById('resetBtn').addEventListener('click', () => {
-  if (confirm('Limpar todas as marcações de verificação?')){
+document.getElementById('resetBtn').addEventListener('click', async () => {
+  if (!syncReady) return;
+  if (confirm('Limpar TODAS as marcações compartilhadas para todos os computadores?')){
+    const { error } = await db
+      .from('verificacoes_leilao')
+      .update({ verificado: false, atualizado_em: new Date().toISOString() })
+      .eq('verificado', true);
+    if (error) {
+      console.error(error);
+      alert('Não foi possível limpar as marcações.');
+      return;
+    }
     checkedState = {};
-    saveState();
     render();
+    savedNote.textContent = 'Marcações compartilhadas limpas';
   }
 });
 
